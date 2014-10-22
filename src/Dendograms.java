@@ -1,5 +1,10 @@
+/*
+ * @author: Dinesh Dommaraju
+ * Program Description:
+ */
 import java.util.*;
 
+//class to describe the two merged nodes at each level
 class Merge{
 	String city1;
 	String city2;
@@ -23,7 +28,9 @@ public class Dendograms {
 	};
 	
 	static String[] cities={"BOS","NY","DC","MIA","CHI","SEA","SF","LA","DEN"};
+	static HashMap<String,Integer> Map=new HashMap<String, Integer>();
 	
+	//Finds the minimum distance between two groups which needs to be clustered
 	static Merge findMinimum(HashMap<String,ArrayList<String>> originalMap)
 	{
 		int min=Integer.MAX_VALUE;
@@ -50,37 +57,91 @@ public class Dendograms {
 		return new Merge(city1,city2);	
 	}
 	
-	static ArrayList<String> computeNewDistance(HashMap<String,ArrayList<String>> originaMap,String group1, String group2)
+	//Method to update the distance when groups were merged.
+	static ArrayList<String> computeNewDistance(HashMap<String,ArrayList<String>> temp,String group1,String mode)
 	{
 		ArrayList<String> output=new ArrayList<String>();
+		String[] group1_arr=group1.split(":");
+		
+		for(String keys: temp.keySet())
+		{
+			String[] key_arr=keys.split(":");
+			
+			ArrayList<Integer> tempList=new ArrayList<Integer>();
+			for(String key: key_arr)
+			{
+				if(!group1.contains(key))
+				{	
+					for(String city: group1_arr)
+					{
+						int dis=Map.get(city+":"+key);
+						tempList.add(dis);
+					}
+				}
+			}
+			//
+			//
+			if(tempList.size() > 0)
+			{
+				Collections.sort(tempList);
+				int size=tempList.size()/2;
+				int update_distance;
+				if(mode.equals("small")) update_distance=tempList.get(0);
+				else if(mode.equals("complete")) update_distance=tempList.get(tempList.size()-1);
+				else{
+					update_distance=tempList.get(size);
+				}
+					
+				output.add(keys+" "+update_distance);
+			}	
+		}
 		return output;
 	}
 	
-	static void computeDendograms(HashMap<String,ArrayList<String>> originalMap,int level)
+	static void computeDendograms(HashMap<String,ArrayList<String>> originalMap,int level,String mode)
 	{
 		HashMap<String,ArrayList<String>> temp=(HashMap<String, ArrayList<String>>) originalMap.clone();
-		
+		int l=0;
 		while(level-- > 0)
 		{
+			++l;
 			Merge node =findMinimum(temp);
 			String city1=node.city1;
 			String city2=node.city2;
-			System.out.println("Merge Cities " + city1+" and "+city2);
-			
+			//System.out.println("Merge Cities " + city1+" and "+city2);
+			System.out.println("_____________________________________");
+			System.out.println("Level "+l);
+			System.out.println("_____________________________________");
 			//remote city1 and city2 from the hashmap and add a new group to the hashmap
 			String newGroup=city1+":"+city2;
 			//computeNewDistance
 			//
-			ArrayList<String> t1=temp.get(city1);
-			ArrayList<String> t2=temp.get(city2);
-			//
-			//
-			temp.remove(city1);
-			//
-			ArrayList<String> out=computeNewDistance(temp, originalMap);
-			temp.put(newGroup, out);
 			//removing the cities group 1 and 2
-			temp.remove()
+			temp.remove(city1);
+			temp.remove(city2);
+			//
+			//
+			ArrayList<String> out=computeNewDistance(temp,newGroup,mode);
+			//
+			//removing city1 and city2 from all the lists
+			//
+			for(String key : temp.keySet())
+			{
+				ArrayList<String> al=temp.get(key);
+				
+				for(int i=0; i < al.size();i++)
+				{
+					String t=al.get(i);
+					if(t.contains(city1) || t.contains(city2))
+					{
+						al.remove(i);
+						--i;
+					}
+				}
+			}
+			temp.put(newGroup, out);
+			//
+			displayOriginalHashMap(temp);
 		}
 		
 	}
@@ -111,7 +172,8 @@ public class Dendograms {
 			{
 				String c1=cities[i];
 				String c2=cities[j];
-				
+				Map.put(c1+":"+c2,intialMatrix[i][j]);
+				Map.put(c2+":"+c1,intialMatrix[i][j]);
 				if(originalMap.containsKey(c1))
 				{
 					ArrayList<String> al=originalMap.get(c1);
@@ -126,7 +188,9 @@ public class Dendograms {
 			}
 		}	
 		
+		originalMap.put(cities[len-1], new ArrayList<String>());
 		//debug
+		System.out.println("Level0");
 		displayOriginalHashMap(originalMap);
 		return originalMap;
 	}
@@ -136,6 +200,13 @@ public class Dendograms {
 		HashMap<Integer, ArrayList<Integer>> hm=new HashMap<Integer,ArrayList<Integer>>();
 		//computeDendograms(cities.length);
 		HashMap<String,ArrayList<String>> originalMap=readIntoHashMap();
-		computeDendograms(originalMap,1);
+		System.out.println("Single link clustering");
+		computeDendograms(originalMap,cities.length-1,"small");
+		System.out.println("Complete clustering");
+		System.out.println("************************");
+		computeDendograms(originalMap,cities.length-1,"Complete");
+		System.out.println("Median link clustering");
+		System.out.println("************************");
+		computeDendograms(originalMap,cities.length-1,"Median");
 	}
 }
